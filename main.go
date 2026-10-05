@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -19,6 +21,8 @@ type Claims struct {
 	Iat  int64  `json:"iat"`
 }
 
+var secret = []byte("my-super-secret-key")
+
 func encodePart(v any) string {
 	b, err := json.Marshal(v)
 	if err != nil {
@@ -27,12 +31,22 @@ func encodePart(v any) string {
 	return base64.RawURLEncoding.EncodeToString(b)
 }
 
-func main() {
+func sign(unsigned string, key []byte) string {
+	mac := hmac.New(sha256.New, key)
+	mac.Write([]byte(unsigned))
+	return base64.RawStdEncoding.EncodeToString(mac.Sum(nil))
+}
+
+func createToken(c Claims) string {
 	h := Header{
-		Alg: "HS256",
+		Alg: "hs256",
 		Typ: "JWT",
 	}
+	unsigned := encodePart(h) + "." + encodePart(c)
+	return unsigned + "." + sign(unsigned, secret)
+}
 
+func main() {
 	now := time.Now()
 	c := Claims{
 		Sub:  "user-123",
@@ -41,10 +55,6 @@ func main() {
 		Exp:  now.Add(15 * time.Minute).Unix(),
 	}
 
-	header := encodePart(h)
-	payload := encodePart(c)
-
-	fmt.Println("Header: ", header)
-	fmt.Println("Payload: ", payload)
-	fmt.Println("Unsigned", header+"."+payload)
+	token := createToken(c)
+	fmt.Println("Token:", token)
 }
