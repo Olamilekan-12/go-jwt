@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 type Header struct {
@@ -18,17 +19,32 @@ type Claims struct {
 	Iat  int64  `json:"iat"`
 }
 
+func encodePart(v any) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	return base64.RawURLEncoding.EncodeToString(b)
+}
+
 func main() {
 	h := Header{
 		Alg: "HS256",
 		Typ: "JWT",
 	}
 
-	jsonBytes, err := json.Marshal(h)
-	if err != nil {
-		panic(err)
+	now := time.Now()
+	c := Claims{
+		Sub:  "user-123",
+		Name: "Olamilekan",
+		Iat:  now.Unix(),
+		Exp:  now.Add(15 * time.Minute).Unix(),
 	}
-	fmt.Println("JSON:   ", string(jsonBytes))
-	encoded := base64.RawStdEncoding.EncodeToString(jsonBytes)
-	fmt.Println("Encoded:", encoded)
+
+	header := encodePart(h)
+	payload := encodePart(c)
+
+	fmt.Println("Header: ", header)
+	fmt.Println("Payload: ", payload)
+	fmt.Println("Unsigned", header+"."+payload)
 }
